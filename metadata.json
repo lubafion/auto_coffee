@@ -1,0 +1,6 @@
+{
+  "name": "CoffeePath AI Agent",
+  "description": "An intelligent AI agent that automates coffee ordering during your commute based on location, weather, and work schedule.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["AI reasoning", "Context-aware automation"]
+}
