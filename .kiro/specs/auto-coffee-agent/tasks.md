@@ -47,5 +47,5 @@
   - design.md (아키텍처, 데이터 모델, 판단 로직)
   - steering.md (전역 규칙 9개, 판단 우선순위)
   - CHECKLIST.md (자동 판정 가능 항목)
-  - test-input/ (7개 케이스)
+  - test-input/ (5개 케이스)
   - README.md (평가 양식 준수)
