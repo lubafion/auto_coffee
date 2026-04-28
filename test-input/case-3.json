@@ -1,12 +1,16 @@
 {
-  "_description": "T3: 재택 근무 - 집에서 일하는 날",
-  "_expected": "should_order: false, reason에 'Remote' 또는 '재택' 관련 내용 포함",
-  "currentLocation": { "lat": 37.5200, "lng": 126.950 },
-  "currentTime": "09:00:00",
-  "movementStatus": "Stationary",
-  "weather": "Cloudy",
-  "workMode": "Remote",
-  "todayOrdered": false,
-  "lastOrderTime": null,
-  "lastOrderMenu": null
+  "_description": "T3: 이미 주문한 상태 — 재주문 확인 팝업 분기 검증",
+  "_expected": {
+    "should_order": false,
+    "confidence_gte": 0.9,
+    "reason_contains": "already ordered"
+  },
+  "currentLocation": { "lat": 37.5665, "lng": 126.978 },
+  "currentTime": "09:30:00",
+  "movementStatus": "Near Office",
+  "weather": "Sunny",
+  "workMode": "Office",
+  "todayOrdered": true,
+  "lastOrderTime": "08:50:00",
+  "lastOrderMenu": "Iced Americano"
 }

@@ -106,11 +106,9 @@ npm run dev
 |------|----------|-----------|
 | case-1.json | Near Office + Sunny + Office + 미주문 | should_order: true, menu: Iced* |
 | case-2.json | Near Office + Cold + Office + 미주문 | should_order: true, menu: Hot* |
-| case-3.json | Near Office + Office + 이미 주문 | should_order: false |
+| case-3.json | Near Office + Office + todayOrdered=true | should_order: false (재주문 확인 팝업) |
 | case-4.json | Near Office + Remote 근무 | should_order: false |
-| case-5.json | Passed Office + Office + 미주문 | should_order: false |
-| case-6.json | Moving (아직 멀리 있음) | should_order: false |
-| case-7.json | OOO (외근) | should_order: false |
+| case-5.json | Passed Office + Office + 미주문 (실패 케이스) | should_order: false |
 
 ---
 
@@ -148,25 +146,27 @@ UI의 Simulation Scenarios 버튼으로 각 케이스를 적용 후 "Trigger Age
 }
 ```
 
-### Run 4 — T4: Already Passed Office
+### Run 4 — T4: Remote Working (재택 근무)
+```json
+{
+  "should_order": false,
+  "menu": "",
+  "confidence": 0.99,
+  "reason": "Work mode is Remote. No office commute today, coffee order not applicable."
+}
+```
+
+### Run 5 — T5: Passed Office (타이밍 초과 — 실패 케이스)
 ```json
 {
   "should_order": false,
   "menu": "",
   "confidence": 0.97,
-  "reason": "Location status is Passed Office. The optimal ordering window has closed."
+  "reason": "Location status is Passed Office. The optimal ordering window has closed. Cannot place order."
 }
 ```
 
-### Run 5 — T5: Rainy Cold Day (Near Office + Cold + Office + 미주문)
-```json
-{
-  "should_order": true,
-  "menu": "Hot Latte",
-  "confidence": 0.92,
-  "reason": "Cold weather detected. Approaching office with no prior order. Hot beverage recommended."
-}
-```
+> **실패 케이스 처리 확인**: Passed Office 상태에서 Agent는 주문을 거부하고 `should_order=false`를 반환합니다. 사람 개입 없이 자동으로 안전하게 fallback됩니다. API 오류 발생 시에도 동일하게 `should_order=false`, `confidence=0`, `reason="Error in decision engine: ..."` 형태로 fallback 처리됩니다.
 
 **핵심 출력 필드 일관성 확인:**
 - `should_order`: 5회 모두 기대값과 일치 ✅

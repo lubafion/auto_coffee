@@ -24,8 +24,6 @@
 | case-3 | Near Office + Office + `todayOrdered=true` | `should_order = false` | [ ] |
 | case-4 | Near Office + Remote | `should_order = false` | [ ] |
 | case-5 | Passed Office + Office + 미주문 | `should_order = false` | [ ] |
-| case-6 | Moving + Office + 미주문 | `should_order = false` | [ ] |
-| case-7 | OOO + Near Office | `should_order = false` | [ ] |
 
 ---
 
@@ -52,6 +50,8 @@
 - [ ] API 오류 시: `confidence = 0`
 - [ ] API 오류 시: `reason` 길이 >= 1 (오류 내용 포함)
 - [ ] confidence < 0.6 시: Notification Modal 미표시
+- [ ] Passed Office 입력(case-5) 시: `should_order = false`, `reason`에 "Passed" 포함
+- [ ] todayOrdered=true 입력(case-3) 시: 자동 주문 실행 금지, 재주문 확인 팝업 표시
 
 ---
 

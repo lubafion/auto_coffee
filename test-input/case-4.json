@@ -1,11 +1,15 @@
 {
-  "_description": "T4: 타이밍 초과 - 이미 사무실을 지나침",
-  "_expected": "should_order: false, reason에 'Passed' 또는 '타이밍 초과' 관련 내용 포함",
-  "currentLocation": { "lat": 37.5700, "lng": 126.985 },
-  "currentTime": "09:15:00",
-  "movementStatus": "Passed Office",
+  "_description": "T4: 재택 근무 — workMode=Remote 시 주문 거부",
+  "_expected": {
+    "should_order": false,
+    "confidence_gte": 0.9,
+    "reason_contains": "Remote"
+  },
+  "currentLocation": { "lat": 37.5200, "lng": 126.950 },
+  "currentTime": "09:00:00",
+  "movementStatus": "Near Office",
   "weather": "Sunny",
-  "workMode": "Office",
+  "workMode": "Remote",
   "todayOrdered": false,
   "lastOrderTime": null,
   "lastOrderMenu": null
