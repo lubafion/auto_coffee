@@ -1,0 +1,12 @@
+{
+  "_description": "T7: OOO (외근) - 사무실 근처여도 외근이면 주문 안 함",
+  "_expected": "should_order: false, reason에 'OOO' 또는 '외근' 관련 내용 포함",
+  "currentLocation": { "lat": 37.5665, "lng": 126.978 },
+  "currentTime": "09:00:00",
+  "movementStatus": "Near Office",
+  "weather": "Sunny",
+  "workMode": "OOO",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}

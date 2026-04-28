@@ -1,0 +1,12 @@
+{
+  "_description": "T3: 재택 근무 - 집에서 일하는 날",
+  "_expected": "should_order: false, reason에 'Remote' 또는 '재택' 관련 내용 포함",
+  "currentLocation": { "lat": 37.5200, "lng": 126.950 },
+  "currentTime": "09:00:00",
+  "movementStatus": "Stationary",
+  "weather": "Cloudy",
+  "workMode": "Remote",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}

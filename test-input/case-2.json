@@ -1,0 +1,16 @@
+{
+  "_description": "T2: 추운 날 핫 음료 — Near Office + Cold + Office + 미주문",
+  "_expected": {
+    "should_order": true,
+    "menu_contains": "Hot",
+    "confidence_gte": 0.6
+  },
+  "currentLocation": { "lat": 37.5665, "lng": 126.978 },
+  "currentTime": "08:50:00",
+  "movementStatus": "Near Office",
+  "weather": "Cold",
+  "workMode": "Office",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}

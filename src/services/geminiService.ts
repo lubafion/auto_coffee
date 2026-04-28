@@ -1,9 +1,22 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AgentInput, AgentOutput } from "../types";
+import { AgentInput, AgentOutput, UserPreferences } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
+function buildPreferencesSection(prefs?: UserPreferences): string {
+  if (!prefs) return '';
+  const parts: string[] = [];
+  if (prefs.temperature !== 'any') parts.push(`Temperature preference: ${prefs.temperature === 'iced' ? 'Iced drinks only' : 'Hot drinks only'}`);
+  if (prefs.category !== 'any') parts.push(`Drink category preference: ${prefs.category}`);
+  if (prefs.sugarLevel !== 'normal') parts.push(`Sugar level: ${prefs.sugarLevel === 'none' ? 'No sugar / unsweetened' : 'Light sugar'}`);
+  if (prefs.customNote.trim()) parts.push(`Special note: ${prefs.customNote.trim()}`);
+  if (parts.length === 0) return '';
+  return `\n    USER PREFERENCES (must be respected when choosing menu):\n    - ${parts.join('\n    - ')}\n`;
+}
+
 export async function decideCoffeeOrder(input: AgentInput): Promise<AgentOutput> {
+  const prefsSection = buildPreferencesSection(input.userPreferences);
+
   const prompt = `
     You are an AI Coffee Ordering Agent for a busy professional.
     Your task is to decide whether to order coffee RIGHT NOW based on the following context:
@@ -16,15 +29,16 @@ export async function decideCoffeeOrder(input: AgentInput): Promise<AgentOutput>
     - Today Ordered: ${input.todayOrdered}
     - Last Order Time: ${input.lastOrderTime || 'N/A'}
     - Last Order Menu: ${input.lastOrderMenu || 'N/A'}
-
+    ${prefsSection}
     RULES:
     1. Only order if working from the office and approaching the office (Location: 'Near Office').
     2. Do NOT order if already ordered today.
     3. If location is 'Passed Office', it's too late to order.
     4. If 'Remote' or 'OOO', do not order.
-    5. Choose 'Iced' for hot/sunny weather, 'Hot' for rainy/cold weather.
+    5. Choose 'Iced' for hot/sunny weather, 'Hot' for rainy/cold weather — UNLESS user preferences override this.
     6. Default to "Not ordering" if there is any uncertainty.
     7. Menu should be a specific beverage name (e.g., "Iced Americano", "Hot Latte").
+    8. If user preferences are provided, prioritize them when selecting the menu item.
 
     Return a JSON object with:
     - should_order: true/false

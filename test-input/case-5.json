@@ -1,0 +1,12 @@
+{
+  "_description": "T5: 추운 날 정상 주문 - Hot 메뉴 추천 검증",
+  "_expected": "should_order: true, menu에 'Hot' 포함, confidence >= 0.7",
+  "currentLocation": { "lat": 37.5665, "lng": 126.978 },
+  "currentTime": "08:30:00",
+  "movementStatus": "Near Office",
+  "weather": "Cold",
+  "workMode": "Office",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}

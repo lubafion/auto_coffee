@@ -1,0 +1,16 @@
+{
+  "_description": "T1: 정상 주문 케이스 — Near Office + Sunny + Office + 미주문",
+  "_expected": {
+    "should_order": true,
+    "menu_contains": "Iced",
+    "confidence_gte": 0.6
+  },
+  "currentLocation": { "lat": 37.5665, "lng": 126.978 },
+  "currentTime": "08:45:00",
+  "movementStatus": "Near Office",
+  "weather": "Sunny",
+  "workMode": "Office",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}

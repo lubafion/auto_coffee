@@ -1,0 +1,12 @@
+{
+  "_description": "T4: 타이밍 초과 - 이미 사무실을 지나침",
+  "_expected": "should_order: false, reason에 'Passed' 또는 '타이밍 초과' 관련 내용 포함",
+  "currentLocation": { "lat": 37.5700, "lng": 126.985 },
+  "currentTime": "09:15:00",
+  "movementStatus": "Passed Office",
+  "weather": "Sunny",
+  "workMode": "Office",
+  "todayOrdered": false,
+  "lastOrderTime": null,
+  "lastOrderMenu": null
+}
