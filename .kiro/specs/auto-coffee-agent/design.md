@@ -3,142 +3,154 @@
 ## 1. 시스템 아키텍처
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                   AgentDashboard (UI)                │
-│                                                     │
-│  ┌──────────────┐    ┌──────────────────────────┐   │
-│  │ Scenario     │    │ Context Card             │   │
-│  │ Selector     │───▶│ (movementStatus, weather,│   │
-│  │ (T1~T5)      │    │  workMode, todayOrdered) │   │
-│  └──────────────┘    └──────────┬───────────────┘   │
-│                                 │ AgentInput         │
-│                                 ▼                    │
-│                    ┌────────────────────────┐        │
-│                    │  decideCoffeeOrder()   │        │
-│                    │  (geminiService.ts)    │        │
-│                    └────────────┬───────────┘        │
-│                                 │ AgentOutput        │
-│                                 ▼                    │
-│  ┌──────────────────────────────────────────────┐   │
-│  │ 후처리 로직                                   │   │
-│  │ confidence >= 0.6 → Notification Modal 표시  │   │
-│  │ confidence < 0.6  → 주문 억제                │   │
-│  │ API 오류          → fallback (false, 0)      │   │
-│  └──────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
+[첫 실행]
+  └─ localStorage에 기호 없음 → OnboardingScreen (음료 기호 설정)
+       └─ 저장 완료 → AgentDashboard
+
+[이후 실행]
+  └─ localStorage에 기호 있음 → AgentDashboard (온보딩 스킵)
+
+AgentDashboard
+  ├─ 기호 배너 (현재 설정 표시 + 수정 버튼)
+  ├─ Context Card (위치/날씨/근무형태/주문여부)
+  ├─ Auto-trigger: Near Office 진입 감지
+  │     └─ 팝업 쿨다운 체크 → 통과 시 decideCoffeeOrder() 호출
+  └─ Notification Modal
+        ├─ 일반: "Time for Coffee?" + 메뉴 + 확인/취소
+        └─ 재주문: "한 잔 더 어떠세요?" + 이미 주문 안내 배너
 ```
 
 ## 2. 데이터 모델
 
-### 2.1 입력 스키마 (AgentInput)
+### 2.1 사용자 기호 (UserPreferences)
+```typescript
+type DrinkTemperature = 'iced' | 'hot' | 'any';
+type DrinkCategory = 'americano' | 'latte' | 'cappuccino' | 'mocha' | 'tea' | 'any';
+type SugarLevel = 'none' | 'light' | 'normal';
+
+interface UserPreferences {
+  temperature: DrinkTemperature;
+  category: DrinkCategory;
+  sugarLevel: SugarLevel;
+  customNote: string;  // 자유 입력 (예: "디카페인", "오트밀크")
+}
+```
+- localStorage 키: `coffeepath.userPreferences`
+
+### 2.2 팝업 쿨다운
+```typescript
+type TimeSlot = 'morning' | 'afternoon' | 'evening';
+// morning:  07:00~11:59
+// afternoon: 12:00~17:59
+// evening:  18:00~23:59
+// 00:00~06:59: null (팝업 비활성)
+```
+- localStorage 키: `coffeepath.popupCooldown`
+- 저장 형식: `"YYYY-MM-DD-{timeslot}"` (예: `"2026-04-28-morning"`)
+
+### 2.3 입력 스키마 (AgentInput)
 ```typescript
 interface AgentInput {
   currentLocation: { lat: number; lng: number };
-  currentTime: string;                    // "HH:MM:SS"
-  movementStatus: MovementStatus;         // Moving | Stationary | Near Office | Passed Office
-  weather: WeatherStatus;                 // Sunny | Rainy | Cold | Cloudy
-  workMode: WorkMode;                     // Office | Remote | OOO
+  currentTime: string;
+  movementStatus: MovementStatus;   // Moving | Stationary | Near Office | Passed Office
+  weather: WeatherStatus;           // Sunny | Rainy | Cold | Cloudy
+  workMode: WorkMode;               // Office | Remote | OOO
   todayOrdered: boolean;
   lastOrderTime?: string;
   lastOrderMenu?: string;
+  userPreferences?: UserPreferences; // 기호 설정 시 주입
 }
 ```
 
-### 2.2 출력 스키마 (AgentOutput)
+### 2.4 출력 스키마 (AgentOutput)
 ```typescript
 interface AgentOutput {
-  should_order: boolean;    // 주문 여부
-  menu: string;             // 구체적 음료명 (예: "Iced Americano")
-  confidence: number;       // 0.0 ~ 1.0
-  reason: string;           // 판단 근거 (항상 비어있지 않음)
+  should_order: boolean;
+  menu: string;        // 구체적 음료명 (예: "Iced Americano")
+  confidence: number;  // 0.0 ~ 1.0
+  reason: string;      // 판단 근거 (항상 비어있지 않음)
 }
 ```
 
 ## 3. 핵심 판단 로직
 
-### 3.1 주문 결정 트리
+### 3.1 Auto-trigger 흐름
 ```
-입력 수신
+Near Office 진입 감지
   │
-  ├─ workMode ≠ Office → should_order=false ("Not office day")
+  ├─ 팝업 쿨다운 적용 중? → 스킵 (같은 시간대 이미 표시)
   │
-  ├─ movementStatus = Passed Office → should_order=false ("Too late")
+  ├─ workMode ≠ Office → 스킵
   │
-  ├─ todayOrdered = true → should_order=false ("Already ordered")
-  │
-  ├─ movementStatus ≠ Near Office → should_order=false ("Not near office yet")
-  │
-  └─ 모든 조건 통과 → 메뉴 선택
-       ├─ weather = Sunny/Cloudy → Iced 계열
-       └─ weather = Cold/Rainy   → Hot 계열
-```
-
-### 3.2 신뢰도 기반 자동화 제어
-```
-confidence >= 0.6 → Notification Modal 표시 (사용자 확인 후 주문)
-confidence < 0.6  → 주문 억제, 로그에만 기록
+  └─ decideCoffeeOrder() 호출
+       │
+       └─ should_order = true?
+            ├─ todayOrdered = true → 재주문 확인 팝업 (isReorder=true)
+            └─ todayOrdered = false → 일반 주문 팝업
+            └─ 팝업 표시 → markPopupShown() (쿨다운 기록)
 ```
 
-### 3.3 실패 케이스 처리 (FR-06, FR-07)
+### 3.2 사용자 기호 → 프롬프트 주입
+```
+UserPreferences 있음
+  └─ buildPreferencesSection() 호출
+       └─ "USER PREFERENCES (must be respected):" 섹션 생성
+            ├─ temperature ≠ 'any' → "Temperature preference: iced/hot"
+            ├─ category ≠ 'any' → "Drink category preference: {category}"
+            ├─ sugarLevel ≠ 'normal' → "Sugar level: none/light"
+            └─ customNote → "Special note: {note}"
+  └─ 프롬프트 RULE 8번: "If user preferences are provided, prioritize them"
+```
+
+### 3.3 팝업 쿨다운 로직
 ```typescript
-// API 오류 시 안전 fallback
-catch (error) {
-  return {
-    should_order: false,
-    menu: "",
-    confidence: 0,
-    reason: "Error: " + error.message
-  };
+function getTimeSlot(date): TimeSlot | null {
+  const h = date.getHours();
+  if (h < 7) return null;    // 새벽 비활성
+  if (h < 12) return 'morning';
+  if (h < 18) return 'afternoon';
+  return 'evening';
+}
+
+function hasShownPopupThisSlot(): boolean {
+  const key = getCooldownKey(); // "YYYY-MM-DD-{slot}"
+  if (!key) return true;        // 새벽 → 차단
+  return localStorage.getItem(POPUP_COOLDOWN_KEY) === key;
 }
 ```
 
-## 4. Gemini API 연동
-
-### 4.1 모델 설정
-- 모델: `gemini-2.0-flash-exp` (또는 `gemini-1.5-flash`)
-- 응답 형식: `responseMimeType: "application/json"`
-- 스키마 강제: `responseSchema` 사용 → 4개 필드 항상 보장
-
-### 4.2 프롬프트 구조
-```
-시스템 역할: AI Coffee Ordering Agent
-컨텍스트: 7개 입력 필드 주입
-규칙: 7개 명시적 규칙 (주문 조건, 메뉴 선택, 불확실성 처리)
-출력: JSON 스키마 강제
-```
-
-### 4.3 병목 가치 반영 (requirements.md → design.md 일관성)
-
-| requirements.md 가치 | design.md 반영 |
-|---------------------|----------------|
-| 타이밍 민감성 (Near Office 창) | movementStatus 체크 최우선 |
-| 실패 비용 (중복 주문) | todayOrdered 플래그 + 하루 1회 제한 |
-| 암묵 규칙 (더우면 아이스) | weather → menu 매핑 로직 |
-| 불확실성 시 보수적 처리 | confidence < 0.6 억제 + API 오류 fallback |
-| 재택/외근 확인 | workMode 체크 |
-
-## 5. UI 컴포넌트 구조
+## 4. UI 컴포넌트 구조
 
 ```
-AgentDashboard
-├── Header (모니터링 ON/OFF 토글)
-├── Scenario Selector (T1~T5 빠른 테스트)
-├── Context Card (현재 입력 상태 표시)
-├── Decision Output (AgentOutput 시각화)
-│   ├── should_order=true  → 초록 카드 + 메뉴 표시
-│   └── should_order=false → 회색 카드
-├── Decision History (로그 목록)
-└── Notification Modal (confidence >= 0.6 시 팝업)
-    ├── 메뉴 표시
-    ├── 판단 근거 표시
-    └── Confirm / Not Today 버튼
+App
+└── AgentDashboard
+    ├── [첫 실행] PreferencesSetup (온보딩)
+    │   ├── 온도 선택 (아이스/핫/상관없음)
+    │   ├── 음료 종류 선택 (6종)
+    │   ├── 당도 선택 (무당/약하게/보통)
+    │   └── 추가 요청 입력 (자유 텍스트)
+    │
+    ├── [기호 수정] PreferencesSetup (isEdit=true)
+    │
+    └── [메인] Dashboard
+        ├── Header (모니터링 ON/OFF)
+        ├── 기호 배너 (현재 설정 + 수정 버튼)
+        ├── Scenario Selector (T1~T5)
+        ├── Context Card
+        ├── Decision Output
+        ├── Decision History
+        └── Notification Modal
+            ├── 일반: "Time for Coffee?"
+            └── 재주문: "한 잔 더 어떠세요?" + 주의 배너
 ```
 
-## 6. 에러 처리 전략
+## 5. 에러 처리 전략
 
 | 에러 유형 | 처리 방법 | 사용자 경험 |
 |-----------|-----------|-------------|
 | API 키 없음 | fallback 반환 | reason에 오류 표시 |
 | 네트워크 오류 | catch → fallback | "Error in decision engine" 표시 |
 | 잘못된 JSON 응답 | JSON.parse 실패 → catch | fallback 반환 |
-| 모호한 입력 | 프롬프트 규칙 6번 적용 | should_order=false |
+| 모호한 입력 | 프롬프트 규칙 적용 | should_order=false |
+| 새벽 시간대 | 쿨다운 null 반환 | 팝업 비활성 |
